@@ -11,7 +11,7 @@ Route::get('/', function () {
 
 Route::get('/home', function () {
     return view('components.home');
-})->middleware(['auth','verified'])->name('home');
+})->middleware(['auth'])->name('home');
 
 //auth
 Route::get('/login', function () {
@@ -35,7 +35,7 @@ Route::get('/profile' ,function(){
 
 
 
-// ဒီ Route ရဲ့ အနောက်မှာ ->name('google.redirect') သေချာပေါက် ပါရပါမယ်
+// choose the google account
 Route::get('auth/google', [AuthController::class, 'redirectToGoogle'])->name('google.redirect');
 
 // Google Callback Route

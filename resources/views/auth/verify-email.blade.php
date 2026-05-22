@@ -1,44 +1,61 @@
-@extends('layouts.app') @section('content')
-<div class="min-h-[80vh] flex flex-col items-center justify-center px-6">
-    <div class="w-full max-w-md bg-white dark:bg-[#161615] border border-[#e3e3e0] dark:border-[#3E3E3A] rounded-2xl p-8 shadow-sm">
-        
-        <div class="mb-6 text-center">
-            <div class="inline-flex items-center justify-center w-16 h-16 bg-[#fff2f2] dark:bg-[#1d0002] rounded-full mb-4">
-                <svg class="w-8 h-8 text-[#f53003]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                </svg>
-            </div>
-            <h1 class="text-2xl font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">Email Verification</h1>
-            <p class="mt-3 text-sm text-[#706f6c] dark:text-[#A1A09A] leading-relaxed">
-                ကျေးဇူးပြု၍ သင်၏ Email ကို စစ်ဆေးပေးပါ။ ကျွန်ုပ်တို့ ပို့လိုက်သော link ကို နှိပ်ပြီး verification ပြုလုပ်ပေးရန် လိုအပ်ပါသည်။
-            </p>
-        </div>
+@extends('layouts.app')
 
-        @if (session('status') == 'verification-link-sent')
-            <div class="mb-6 p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-lg">
-                <p class="text-sm text-green-600 dark:text-green-400 font-medium flex items-center">
-                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+@section('title', 'Verify Email - Chat App')
+
+@section('content')
+<div class="min-h-[calc(100vh-80px)] flex items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        
+        {{-- Main Card --}}
+        <div class="bg-white p-8 sm:p-10 rounded-[2rem] shadow-xl shadow-slate-200/60 border border-slate-100">
+            
+            {{-- Header Section --}}
+            <div class="text-center mb-8">
+                {{-- Animated Verification Mail Icon --}}
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 shadow-sm mb-4">
+                    <svg class="w-8 h-8 animate-pulse" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 19v-8.93a2 2 0 01.89-1.664l8-5.333a2 2 0 012.22 0l8 5.333A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-2.25-1.5a2 2 0 00-2.22 0l-2.25 1.5"></path>
                     </svg>
-                    Verification link အသစ်ကို ပို့လိုက်ပါပြီ။
+                </div>
+                <h2 class="text-3xl font-black text-slate-900 uppercase tracking-tight">Verify Email</h2>
+                <p class="mt-3 text-sm text-slate-500 font-medium leading-relaxed">
+                    Thanks for signing up! Please check your inbox and click on the verification link we just emailed you to activate your chat account.
                 </p>
             </div>
-        @endif
 
-        <div class="space-y-4">
-            <form method="POST" action="{{ route('verification.send') }}">
-                @csrf
-                <button type="submit" class="w-full py-2.5 px-4 bg-[#1b1b18] dark:bg-[#eeeeec] text-white dark:text-[#1C1C1A] text-sm font-medium rounded-lg hover:bg-black dark:hover:bg-white transition-all shadow-sm">
-                    Verification Email ပြန်ပို့မည်
-                </button>
-            </form>
+            {{-- Success Alert (Resent Link) --}}
+            @if (session('status') == 'verification-link-sent')
+                <div class="mb-6 p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-start gap-3">
+                    <svg class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <p class="text-xs text-emerald-700 font-bold">
+                        A new verification link has been sent to your registered email address.
+                    </p>
+                </div>
+            @endif
 
-            <form method="POST" action="{{ route('logout') }}" class="text-center">
-                @csrf
-                <button type="submit" class="text-sm text-[#706f6c] dark:text-[#A1A09A] hover:text-[#1b1b18] dark:hover:text-[#EDEDEC] underline underline-offset-4 transition-colors">
-                    Log Out
-                </button>
-            </form>
+            {{-- Actions --}}
+            <div class="space-y-4">
+                {{-- Resend Form --}}
+                <form method="POST" action="{{ route('verification.send') }}">
+                    @csrf
+                    <button type="submit" 
+                        class="w-full flex justify-center py-4 px-4 border border-transparent text-sm font-black rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all active:scale-[0.98]">
+                        RESEND VERIFICATION EMAIL
+                    </button>
+                </form>
+
+                {{-- Logout Link --}}
+                <form method="POST" action="{{ route('logout') }}" class="text-center pt-2">
+                    @csrf
+                    <button type="submit" 
+                        class="text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">
+                        Log Out
+                    </button>
+                </form>
+            </div>
+
         </div>
     </div>
 </div>
