@@ -11,7 +11,7 @@ Route::get('/', function () {
 
 Route::get('/home', function () {
     return view('components.home');
-})->middleware(['auth'])->name('home');
+})->middleware(['auth','verified'])->name('home');
 
 //auth
 Route::get('/login', function () {

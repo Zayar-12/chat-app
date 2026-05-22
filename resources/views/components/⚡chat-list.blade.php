@@ -155,7 +155,7 @@ new class extends Component
             <div class="h-[69px] px-6 border-b border-slate-800/60 bg-slate-900/50 backdrop-blur flex items-center gap-3 shrink-0">
                 <div class="relative">
                     @if($activePartner->avatar)
-                        <img src="{{ $activePartner->avatar }}" class="w-10 h-10 rounded-full object-cover">
+                        <img src="{{ asset('storage/' . $activePartner->avatar) }}" class="w-10 h-10 rounded-full object-cover">
                     @else
                         <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
                             {{ strtoupper(substr($activePartner->name, 0, 1)) }}
