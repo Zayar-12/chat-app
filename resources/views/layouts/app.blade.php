@@ -28,7 +28,7 @@
     @if(session('success'))
         Swal.fire({
             icon: 'success',
-            title: 'အောင်မြင်သည်',
+            title: 'Success',
             text: "{{ session('success') }}",
             timer: 3000
         });
@@ -37,7 +37,7 @@
     @if($errors->any())
         Swal.fire({
             icon: 'error',
-            title: 'မှားယွင်းနေပါသည်',
+            title: 'Fail',
             text: "{{ $errors->first() }}",
             confirmButtonColor: '#f53003'
         });

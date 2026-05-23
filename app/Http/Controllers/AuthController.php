@@ -83,7 +83,7 @@ class AuthController extends Controller
             ], [
                 'name' => $googleUser->getName(),
                 'google_id' => $googleUser->getId(),
-                'avatar' => $googleUser->getAvatar(),
+                
                'password' => Hash::make(str()->random(16)),
                'email_verified_at'=>now(),
             ]);

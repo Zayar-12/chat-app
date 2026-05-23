@@ -17,6 +17,7 @@ class Messages extends Model
      'body',
      'file_path',
      'read_at',
+     'file_type'
      ];
     
 public function conversation(){

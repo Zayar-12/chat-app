@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'My Profile - The Voice Myanmar')
+@section('title', 'ZayChat')
 
 @section('content')
 <livewire:profile/>

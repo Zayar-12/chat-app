@@ -2,7 +2,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-20">
             
-            {{-- Brand Logo Section --}}
+      
             <div class="flex-shrink-0 flex items-center">
                 <a href="{{ route('welcome') }}" class="flex items-center gap-2 group">
                     <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
@@ -11,20 +11,20 @@
                         </svg>
                     </div>
                     <span class="text-white font-black text-xl tracking-tight uppercase ml-2">
-                        Chat<span class="text-blue-500">ify</span>
+                       Zay<span class="text-blue-500">Chat</span>
                     </span>
                 </a>
             </div>
 
-            {{-- Application Links --}}
-            <div class="hidden md:flex items-center space-x-8">
+      
+            {{-- <div class="hidden md:flex items-center space-x-8">
                 <a href="{{ route('welcome') }}" class="text-slate-300 hover:text-white font-bold text-xs uppercase tracking-widest transition-colors flex items-center gap-2">
                     <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span>
                     Messages
                 </a>
-            </div>
+            </div> --}}
 
-            {{-- Authentication Status Section --}}
+          
             @if (Route::has('login'))
                 <div class="flex items-center gap-4">
                     @guest
@@ -38,7 +38,7 @@
 
                     @auth
                         <div class="flex items-center gap-6">
-                            {{-- Profile Link --}}
+                    
                             <a href="{{ route('profile') }}" class="flex items-center gap-3 group">
                                 <div class="text-right hidden sm:block">
                                     <p class="text-[10px] text-slate-500 font-black uppercase tracking-widest">Active Account</p>
@@ -49,7 +49,7 @@
                                 </div>
                             </a>
 
-                            {{-- Logout Button --}}
+                          
                             <form action="{{ route('logout') }}" method="POST" class="inline">
                                 @csrf
                                 <button type="submit" class="p-2 text-slate-400 hover:text-red-400 transition-colors" title="Logout">

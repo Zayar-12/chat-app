@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Candidates - The Voice Myanmar')
+@section('title', 'ZayChat')
 
 @section('content')
 <livewire:chat-list/>
