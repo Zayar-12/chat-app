@@ -6,6 +6,7 @@ use App\Models\Conversations;
 use App\Models\Messages;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
+use App\Models\User;
 
 new class extends Component
 {
@@ -17,6 +18,47 @@ new class extends Component
     public $message = '';
     public $perpage = 15; 
     public $attachment;
+
+    public $strangerName='';
+    public $modelPopUp=false;
+
+
+    public function updatingStrangerName()
+    {
+        $this->resetPage(); 
+    }
+
+    
+    public function getStrangerProperty(){
+  return User::whereNot(function($query){
+        $query->where('id',auth()->id());
+  })->whereDoesntHave('conversationStart',function($query){
+    $query->where('sender_id',auth()->id());
+  })->whereDoesntHave('conversationReceive',function($query){
+    $query->where('receiver_id',auth()->id());
+  })->where('name','like','%'.$this->strangerName.'%')->paginate(5);
+    }
+
+
+    public  function startConversation($userId){
+        $newChat=Conversations::create([
+            'sender_id'=>auth()->id(),
+           'receiver_id' => $userId,
+            'last_message_at' => now(),
+
+        ]);
+
+        $this->chatId=$newChat->id;
+
+        $this->strangeName='';
+        $this->modelPopUp=false;
+        $this->perpage=15;
+
+
+    }
+
+
+    
 
     public function sendMessage(){
         if(empty(trim($this->message)) && !$this->attachment){
@@ -71,6 +113,9 @@ public function deleteMessage($messageId){
 
     if($Message && $Message->user_id === auth()->id()){
         $Message->delete();
+         if ($Message->file_path) {
+            Storage::disk('public')->delete($Message->file_path);
+        }
     }
 }
 
@@ -116,6 +161,7 @@ public function deleteMessage($messageId){
             'conversations' => $allChats,
             'activeMessages' => $activeMessages,
             'activePartner' => $activePartner,
+            'strangers'=>$this->getStrangerProperty(),
         ];
     }
 }; 
@@ -134,6 +180,7 @@ public function deleteMessage($messageId){
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
                 </span>
+               
                 <input 
                     wire:model.live="search" 
                     type="text" 
@@ -142,7 +189,18 @@ public function deleteMessage($messageId){
                 >
             </div>
         </div>
-
+ <div class="px-4 pt-4 flex justify-between items-center select-none">
+            <h1 class="text-base font-bold text-slate-200">Chats</h1>
+            <button 
+                wire:click="$set('modelPopUp', true)"
+                class="p-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-1"
+            >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
+                </svg>
+                New Chat
+            </button>
+        </div>
        
         <div class="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar">
             @forelse($conversations as $conversation)
@@ -344,14 +402,52 @@ public function deleteMessage($messageId){
         <input type="file" id="chat-file" wire:model="attachment" class="hidden">
 
         
-        <input 
-            type="text" 
-            placeholder="Write a message..." 
-            wire:model="message"
-            class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 transition-all"
-        >
+       <div x-data="{ 
+    showPicker: false,
+    emojis: ['😊', '😂', '🤣', '❤️', '🔥', '👍', '🙏', '🎉', '✨', '😎', '😢', '😮', '👏', '🙌', '💯', '🚀', '💡', '💬', '👀', '📌', '🤩', '🥳', '🤔', '💔'], // စိတ်ကြိုက် အီးမေးဂျီတွေ ထပ်တိုးနိုင်ပါတယ်
+    insertEmoji(emoji) {
+        let currentMessage = $wire.get('message') || '';
+        $wire.set('message', currentMessage + emoji);
+    }
+}" class="flex-1 relative">
+    
+    <input 
+        type="text" 
+        placeholder="Write a message..." 
+        wire:model="message"
+        class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-4 pr-12 py-3 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 transition-all"
+    >
 
-        {{-- Send ခလုတ် --}}
+    <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+        <button 
+            type="button"
+            x-on:click="showPicker = !showPicker" 
+            class="text-xl opacity-75 hover:opacity-100 transition-opacity focus:outline-none"
+            title="Add Emoji"
+        >
+            😊
+        </button>
+
+        <div 
+            x-show="showPicker" 
+            x-on:click.away="showPicker = false" \
+            x-transition \
+            class="absolute bottom-full right-0 mb-2 p-3 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl grid grid-cols-6 gap-2 w-56 z-50 max-h-48 overflow-y-auto"
+            style="display: none;" \
+        >
+            <template x-for="emoji in emojis">
+                <button 
+                    type="button" 
+                    x-on:click="insertEmoji(emoji); showPicker = false" \
+                    class="text-xl p-1 hover:bg-slate-800 rounded-lg transition-colors active:scale-90"
+                    x-text="emoji"
+                ></button>
+            </template>
+        </div>
+    </div>
+</div>
+
+      
         <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 shrink-0">
             Send
         </button>
@@ -373,5 +469,80 @@ public function deleteMessage($messageId){
         @endif
     </div>
 
+@if($modelPopUp)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/70 transition-all">
+            <div class="relative w-full max-w-2xl bg-slate-900 border border-slate-800/80 rounded-2xl shadow-2xl flex flex-col max-h-[85vh]" wire:click.away="$set('modelPopUp', false)">
+                
+                <div class="flex items-center justify-between p-5 border-b border-slate-800/60">
+                    <h3 class="text-base font-bold text-slate-100 flex items-center gap-3">
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11.5m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0M12 21a9.003 9.003 0 0 0 8.354-5.646 9.003 9.003 0 0 0-16.708 0A9.003 9.003 0 0 0 12 21z"></path>
+                        </svg>
+                        Start New Conversation
+                    </h3>
+                    <button wire:click="$set('modelPopUp', false)" class="text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 p-2 rounded-xl transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-5 border-b border-slate-800/40 bg-slate-900/50">
+                    <div class="relative max-w-md"> <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </span>
+                        <input 
+                            wire:model.live="strangerName" 
+                            type="text" 
+                            placeholder="Search people by name..." 
+                            class="block w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder-slate-500"
+                        >
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-4 space-y-2 min-h-[300px] custom-scrollbar">
+                    @forelse($strangers as $stranger)
+                        <div class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-800/40 border border-transparent hover:border-slate-800/20 transition-all group">
+                            <div class="flex items-center gap-4 min-w-0">
+                                @if($stranger->avatar)
+                                    <img src="{{ asset('storage/' . $stranger->avatar) }}" class="w-11 h-11 rounded-full object-cover shrink-0 border border-slate-800">
+                                @else
+                                    <div class="w-11 h-11 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-sm font-black border border-slate-700 shrink-0 uppercase">
+                                        {{ substr($stranger->name, 0, 2) }}
+                                    </div>
+                                @endif
+                                <div class="truncate">
+                                    <p class="text-sm font-semibold text-slate-200 group-hover:text-white truncate">{{ $stranger->name }}</p>
+                                    <p class="text-xs text-slate-500 truncate mt-0.5">{{ $stranger->email }}</p>
+                                </div>
+                            </div>
+
+                            <button 
+                                wire:click="startConversation({{ $stranger->id }})"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95"
+                            >
+                                Chat
+                            </button>
+                        </div>
+                    @empty
+                        <div class="text-center py-20 text-slate-500 text-sm">
+                            <svg class="w-12 h-12 text-slate-700 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path>
+                            </svg>
+                            No new people found
+                        </div>
+                    @endforelse
+                </div>
+
+                @if($strangers->hasPages())
+                    <div class="p-4 bg-slate-950/40 border-t border-slate-800/60 rounded-b-2xl px-5">
+                        {{ $strangers->links(data: ['scrollTo' => false]) }}
+                    </div>
+                @endif
+            </div>
+        </div>
+    @endif
 </div>
 

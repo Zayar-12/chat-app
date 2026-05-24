@@ -118,7 +118,7 @@
 
      
         <footer class="w-full max-w-6xl mx-auto px-6 py-6 text-center text-xs text-slate-600 relative z-10">
-            <p>&copy; {{ date('Y') }} {{ config('app.name', 'Laravel') }}. All rights reserved.</p>
+            <p>&copy; {{ date('Y') }} ZayChat. All rights reserved.</p>
         </footer>
 
     </body>

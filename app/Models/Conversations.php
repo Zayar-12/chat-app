@@ -9,6 +9,12 @@ class Conversations extends Model
 {
    use HasFactory;
 
+public  $fillable = [
+   'sender_id',
+   'receiver_id',
+   'last_message_at'
+];   
+
      public function messages(){
         return $this->hasMany(Messages::class,'conversation_id');
      }

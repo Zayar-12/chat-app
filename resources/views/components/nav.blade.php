@@ -44,9 +44,14 @@
                                     <p class="text-[10px] text-slate-500 font-black uppercase tracking-widest">Active Account</p>
                                     <p class="text-sm text-white font-black tracking-tight">{{ Auth::user()->name }}</p>
                                 </div>
-                                <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-400 flex items-center justify-center text-white font-black border-2 border-slate-700 group-hover:border-blue-500 transition-colors shadow-inner">
+                               @if (Auth::user()->avatar)
+                                    <img src="{{ asset('storage/' . Auth::user()->avatar) }}" class="w-10 h-10 rounded-full object-cover">
+                               @else
+                                   <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-400 flex items-center justify-center text-white font-black border-2 border-slate-700 group-hover:border-blue-500 transition-colors shadow-inner">
                                     {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                                 </div>
+                               @endif
+                                
                             </a>
 
                           

@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('google_id')->nullable();
             $table->string('avatar')->nullable();
             $table->timestamp('last_seen')->nullable();
+            $table->enum('role',['user','admin','superadmin'])->default('user');
             $table->timestamps();
         });
 
