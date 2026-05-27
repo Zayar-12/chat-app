@@ -29,16 +29,63 @@ new class extends Component
     }
 
     
-    public function getStrangerProperty(){
-  return User::whereNot(function($query){
-        $query->where('id',auth()->id());
-  })->whereDoesntHave('conversationStart',function($query){
-    $query->where('sender_id',auth()->id());
-  })->whereDoesntHave('conversationReceive',function($query){
-    $query->where('receiver_id',auth()->id());
-  })->where('name','like','%'.$this->strangerName.'%')->paginate(5);
-    }
+//     public function getStrangerProperty(){
+//   return User::whereNot(function($query){
+//         $query->where('id',auth()->id());
+//   })->whereDoesntHave('conversationStart',function($query){
+//     $query->where('sender_id',auth()->id());
+//   })->whereDoesntHave('conversationReceive',function($query){
+//     $query->where('receiver_id',auth()->id());
+//   })->where('name','like','%'.$this->strangerName.'%')->paginate(5);
+//     }
 
+public function getStrangerProperty(){
+
+    $authId=auth()->id();
+
+    $existingUserIds= Conversations::where('sender_id',$authId)->pluck('receiver_id')
+    ->merge(
+        Conversations::where('receiver_id',$authId)->pluck('sender_id')
+    )->unique()->toArray();
+
+
+   $query = User::where('id', '!=', $authId)
+        ->whereNotIn('id', $existingUserIds)
+        ->where('name', 'like', '%' . $this->strangerName . '%');
+
+    return $query->paginate(5);
+}
+
+
+public function deleteChat($id){
+
+    $conversation=Conversations::find($id);
+
+
+    if($conversation->sender_id === auth()->id() || $conversation->receiver_id === auth()->id()){
+
+
+     $messages= $conversation->messages()->get();
+
+     if($messages){
+        foreach ($messages as $message) {
+            if($message->file_path){
+ Storage::disk('public')->delete($message->file_path);
+            }
+
+         $message->delete();
+        }
+     }
+
+     $conversation->delete();
+
+     if($this->chatId === $id){
+        $this->chatId = null;
+
+     }
+    
+    }
+}
 
     public  function startConversation($userId){
         $newChat=Conversations::create([
@@ -50,7 +97,7 @@ new class extends Component
 
         $this->chatId=$newChat->id;
 
-        $this->strangeName='';
+        $this->strangerName='';
         $this->modelPopUp=false;
         $this->perpage=15;
 
@@ -166,383 +213,27 @@ public function deleteMessage($messageId){
     }
 }; 
 ?>
-
 <div class="w-full h-screen flex bg-slate-950 text-slate-100 overflow-hidden font-sans">
     
-  
-    <div class="w-full md:w-[380px] h-full flex flex-col bg-slate-900 border-r border-slate-800/80 shrink-0 select-none">
-        
-       
-        <div class="p-4 border-b border-slate-800/60 bg-slate-900">
-            <div class="relative">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                </span>
-               
-                <input 
-                    wire:model.live="search" 
-                    type="text" 
-                    placeholder="Search" 
-                    class="block w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-slate-500"
-                >
-            </div>
-        </div>
- <div class="px-4 pt-4 flex justify-between items-center select-none">
-            <h1 class="text-base font-bold text-slate-200">Chats</h1>
-            <button 
-                wire:click="$set('modelPopUp', true)"
-                class="p-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-1"
-            >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
-                </svg>
-                New Chat
-            </button>
-        </div>
-       
-        <div class="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar">
-            @forelse($conversations as $conversation)
-                @php
-                    $chatPartner = $conversation->sender_id === auth()->id() ? $conversation->receiver : $conversation->sender;
-                    $latestMessage = $conversation->messages()->latest()->first();
-                    $isActive = $chatId === $conversation->id;
-                @endphp
+    <x-chat-sideBar 
+        :conversations="$conversations" 
+        :chatId="$chatId" 
+        :search="$search" 
+    />
 
-                <button 
-                    wire:click="setChatId({{ $conversation->id }})" 
-                    class="w-full text-left flex items-center gap-3 p-3 rounded-xl transition-all group active:scale-[0.99] {{ $isActive ? 'bg-blue-600/15 border-l-4 border-blue-500 rounded-l-none' : 'hover:bg-slate-800/60' }}"
-                >
-                    <div class="relative shrink-0">
-                        @if($chatPartner->avatar)
-                   
-                            <img src="{{ asset('storage/' . $chatPartner->avatar) }}"" class="w-12 h-12 rounded-full object-cover border border-slate-800 shadow-md">
-                        @else
-                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center text-white text-base font-black shadow-md">
-                                {{ strtoupper(substr($chatPartner->name, 0, 1)) }}
-                            </div>
-                        @endif
-                    </div>
+    <x-chat-area 
+        :chatId="$chatId" 
+        :activePartner="$activePartner" 
+        :activeMessages="$activeMessages" 
+        :perpage="$perpage" 
+        :attachment="$attachment" 
+        :message="$message" 
+    />
 
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between gap-2">
-                            <p class="text-sm font-semibold {{ $isActive ? 'text-blue-400 font-bold' : 'text-slate-200 group-hover:text-white' }} truncate transition-colors">
-                                {{ $chatPartner->name }}
-                            </p>
-                            @if($conversation->last_message_at)
-                                <span class="text-[11px] text-slate-500 shrink-0 font-medium">
-                                    {{ \Carbon\Carbon::parse($conversation->last_message_at)->format('g:i A') }}
-                                </span>
-                            @endif
-                        </div>
-                        <p class="text-xs text-slate-400 truncate mt-1 leading-normal">
-                            {{ $latestMessage?->body ?? 'No messages yet...' }}
-                        </p>
-                    </div>
-                </button>
-            @empty
-                <div class="text-center py-12 px-4">
-                    <svg class="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                    </svg>
-                    <p class="text-sm text-slate-500 font-medium">No conversations found</p>
-                </div>
-            @endforelse
-        </div>
-    </div>
+    <x-new-chatModel 
+        :modelPopUp="$modelPopUp" 
+        :strangerName="$strangerName" 
+        :strangers="$strangers" 
+    />
 
-    
-    <div class="flex-1 h-full flex flex-col bg-slate-950 relative overflow-hidden">
-        @if($chatId && $activePartner)
-            
-            <div class="h-[69px] px-6 border-b border-slate-800/60 bg-slate-900/50 backdrop-blur flex items-center gap-3 shrink-0">
-                <div class="relative">
-                    @if($activePartner->avatar)
-                        <img src="{{ asset('storage/' . $activePartner->avatar) }}" class="w-10 h-10 rounded-full object-cover">
-                    @else
-                        <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
-                            {{ strtoupper(substr($activePartner->name, 0, 1)) }}
-                        </div>
-                    @endif
-                </div>
-                <div>
-                    <h2 class="text-sm font-bold text-slate-100">{{ $activePartner->name }}</h2>
-                    <span class="text-[11px] text-green-400 flex items-center gap-1 font-medium">
-                        <span class="h-1.5 w-1.5 rounded-full bg-green-500 inline-block"></span> online
-                    </span>
-                </div>
-            </div>
-
-          
-            <div class="flex-1 min-h-0 overflow-y-auto p-6 space-y-3 custom-scrollbar bg-slate-950 flex flex-col">
-                
-              
-                @if(count($activeMessages) >= $perpage)
-                    <div class="flex justify-center mb-4 shrink-0">
-                        <button 
-                            wire:click="loadMore" 
-                            class="text-xs bg-slate-900/80 hover:bg-slate-800 text-blue-400 px-4 py-2 rounded-full transition-all border border-slate-800/80 shadow-md flex items-center gap-1.5 active:scale-95"
-                        >
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"></path>
-                            </svg>
-                            Load older messages
-                        </button>
-                    </div>
-                @endif
-
-              
-             <div class="space-y-3 flex-1">
-    @forelse($activeMessages as $message)
-        @php
-           
-            $isMe = $message->user_id === auth()->id();
-        @endphp
-        
-        <div class="flex items-center gap-2 group {{ $isMe ? 'justify-end flex-row' : 'justify-start' }}">
-            
-           
-            @if($isMe)
-                <button 
-                    wire:click="deleteMessage({{ $message->id }})" 
-                    wire:confirm="Are you sure you want to delete this message?"
-                    class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 p-1.5 rounded-full hover:bg-slate-800/60 transition-all duration-200 cursor-pointer shrink-0"
-                    title="Delete Message"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
-                    </svg>
-                </button>
-            @endif
-
-           
-            <div class="max-w-[65%] rounded-2xl px-4 py-2.5 text-sm shadow-md transition-all
-                {{ $isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-100 rounded-bl-none' }}">
-                
-              
-                @if($message->file_path)
-                    <div class="mb-2 max-w-full overflow-hidden rounded-lg">
-                        
-                     
-                        @if($message->file_type === 'image')
-                            <a href="{{ asset('storage/' . $message->file_path) }}" target="_blank" class="block hover:opacity-90 transition-opacity">
-                                <img src="{{ asset('storage/' . $message->file_path) }}" class="max-h-60 w-auto object-cover rounded-lg shadow-sm border border-black/10">
-                            </a>
-
-                       
-                        @elseif($message->file_type === 'video')
-                            <video controls class="max-h-60 w-full rounded-lg shadow-sm border border-black/10">
-                                <source src="{{ asset('storage/' . $message->file_path) }}" type="video/{{ pathinfo($message->file_path, PATHINFO_EXTENSION) }}">
-                                Your browser does not support the video tag.
-                            </video>
-
-                      
-                        @else
-                            <a href="{{ asset('storage/' . $message->file_path) }}" download class="flex items-center gap-2 p-2.5 rounded-xl border transition-colors text-xs font-medium
-                                {{ $isMe ? 'bg-blue-700/60 hover:bg-blue-700/90 border-blue-500/30 text-blue-100' : 'bg-slate-900/60 hover:bg-slate-900/90 border-slate-700/40 text-blue-400' }}">
-                                <svg class="w-5 h-5 shrink-0 {{ $isMe ? 'text-blue-300' : 'text-slate-400' }}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"></path>
-                                </svg>
-                                <span class="truncate max-w-[150px]">{{ basename($message->file_path) }}</span>
-                                <svg class="w-4 h-4 shrink-0 ml-auto {{ $isMe ? 'text-blue-300' : 'text-blue-400' }}" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
-                                </svg>
-                            </a>
-                        @endif
-                    </div>
-                @endif
-
-               
-                @if(!empty(trim($message->body)))
-                    <p class="leading-relaxed break-words font-medium">{{ $message->body }}</p>
-                @endif
-
-              
-                <span class="block text-[10px] text-right mt-1 font-mono {{ $isMe ? 'text-blue-200' : 'text-slate-400' }}">
-                    {{ $message->created_at->format('g:i A') }}
-                </span>
-            </div>
-
-        </div>
-    @empty
-      
-        <div class="h-full flex items-center justify-center text-slate-500 text-sm">
-            Say hello to start the conversation!
-        </div>
-    @endforelse
 </div>
-            </div>
-
-         
-           <div class="p-4 bg-slate-900/40 border-t border-slate-800/60 shrink-0">
-    
- 
-    @if ($attachment)
-        <div class="max-w-4xl mx-auto mb-2 p-2 bg-slate-800 rounded-xl flex items-center justify-between text-xs text-blue-400">
-            <div class="flex items-center gap-2 truncate">
-                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
-                </svg>
-                <span class="truncate">Selected: {{ $attachment->getClientOriginalName() }}</span>
-            </div>
-            <button type="button" wire:click="$set('attachment', null)" class="text-red-400 hover:text-red-300 font-bold ml-2">Remove</button>
-        </div>
-    @endif
-
-    <form class="flex items-center gap-2 max-w-4xl mx-auto" wire:submit.prevent="sendMessage">
-        
-   
-        <label for="chat-file" class="p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 rounded-xl cursor-pointer transition-all shrink-0" title="Attach image, video or file">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 4.636a9 9 0 010 12.728l-8.486 8.485a6 6 0 11-8.485-8.485l10.607-10.607a4 4 0 115.656 5.656l-9.192 9.193a2 2 0 11-2.829-2.828l8.486-8.485M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9"></path>
-            </svg>
-        </label>
-        
-        <input type="file" id="chat-file" wire:model="attachment" class="hidden">
-
-        
-       <div x-data="{ 
-    showPicker: false,
-    emojis: ['😊', '😂', '🤣', '❤️', '🔥', '👍', '🙏', '🎉', '✨', '😎', '😢', '😮', '👏', '🙌', '💯', '🚀', '💡', '💬', '👀', '📌', '🤩', '🥳', '🤔', '💔'], // စိတ်ကြိုက် အီးမေးဂျီတွေ ထပ်တိုးနိုင်ပါတယ်
-    insertEmoji(emoji) {
-        let currentMessage = $wire.get('message') || '';
-        $wire.set('message', currentMessage + emoji);
-    }
-}" class="flex-1 relative">
-    
-    <input 
-        type="text" 
-        placeholder="Write a message..." 
-        wire:model="message"
-        class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-4 pr-12 py-3 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 transition-all"
-    >
-
-    <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-        <button 
-            type="button"
-            x-on:click="showPicker = !showPicker" 
-            class="text-xl opacity-75 hover:opacity-100 transition-opacity focus:outline-none"
-            title="Add Emoji"
-        >
-            😊
-        </button>
-
-        <div 
-            x-show="showPicker" 
-            x-on:click.away="showPicker = false" \
-            x-transition \
-            class="absolute bottom-full right-0 mb-2 p-3 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl grid grid-cols-6 gap-2 w-56 z-50 max-h-48 overflow-y-auto"
-            style="display: none;" \
-        >
-            <template x-for="emoji in emojis">
-                <button 
-                    type="button" 
-                    x-on:click="insertEmoji(emoji); showPicker = false" \
-                    class="text-xl p-1 hover:bg-slate-800 rounded-lg transition-colors active:scale-90"
-                    x-text="emoji"
-                ></button>
-            </template>
-        </div>
-    </div>
-</div>
-
-      
-        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 shrink-0">
-            Send
-        </button>
-    </form>
-</div>
-
-        @else
-           
-            <div class="flex-1 flex flex-col items-center justify-center text-slate-500 select-none">
-                <div class="bg-slate-900/60 p-4 rounded-full mb-3 shadow-inner">
-                    <svg class="w-10 h-10 text-slate-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"></path>
-                    </svg>
-                </div>
-                <p class="text-xs bg-slate-900/50 px-3 py-1.5 rounded-full font-medium text-slate-400 shadow-sm border border-slate-800/40">
-                    Select a chat to start messaging
-                </p>
-            </div>
-        @endif
-    </div>
-
-@if($modelPopUp)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/70 transition-all">
-            <div class="relative w-full max-w-2xl bg-slate-900 border border-slate-800/80 rounded-2xl shadow-2xl flex flex-col max-h-[85vh]" wire:click.away="$set('modelPopUp', false)">
-                
-                <div class="flex items-center justify-between p-5 border-b border-slate-800/60">
-                    <h3 class="text-base font-bold text-slate-100 flex items-center gap-3">
-                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11.5m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0M12 21a9.003 9.003 0 0 0 8.354-5.646 9.003 9.003 0 0 0-16.708 0A9.003 9.003 0 0 0 12 21z"></path>
-                        </svg>
-                        Start New Conversation
-                    </h3>
-                    <button wire:click="$set('modelPopUp', false)" class="text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 p-2 rounded-xl transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="p-5 border-b border-slate-800/40 bg-slate-900/50">
-                    <div class="relative max-w-md"> <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                            </svg>
-                        </span>
-                        <input 
-                            wire:model.live="strangerName" 
-                            type="text" 
-                            placeholder="Search people by name..." 
-                            class="block w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder-slate-500"
-                        >
-                    </div>
-                </div>
-
-                <div class="flex-1 overflow-y-auto p-4 space-y-2 min-h-[300px] custom-scrollbar">
-                    @forelse($strangers as $stranger)
-                        <div class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-800/40 border border-transparent hover:border-slate-800/20 transition-all group">
-                            <div class="flex items-center gap-4 min-w-0">
-                                @if($stranger->avatar)
-                                    <img src="{{ asset('storage/' . $stranger->avatar) }}" class="w-11 h-11 rounded-full object-cover shrink-0 border border-slate-800">
-                                @else
-                                    <div class="w-11 h-11 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-sm font-black border border-slate-700 shrink-0 uppercase">
-                                        {{ substr($stranger->name, 0, 2) }}
-                                    </div>
-                                @endif
-                                <div class="truncate">
-                                    <p class="text-sm font-semibold text-slate-200 group-hover:text-white truncate">{{ $stranger->name }}</p>
-                                    <p class="text-xs text-slate-500 truncate mt-0.5">{{ $stranger->email }}</p>
-                                </div>
-                            </div>
-
-                            <button 
-                                wire:click="startConversation({{ $stranger->id }})"
-                                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95"
-                            >
-                                Chat
-                            </button>
-                        </div>
-                    @empty
-                        <div class="text-center py-20 text-slate-500 text-sm">
-                            <svg class="w-12 h-12 text-slate-700 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path>
-                            </svg>
-                            No new people found
-                        </div>
-                    @endforelse
-                </div>
-
-                @if($strangers->hasPages())
-                    <div class="p-4 bg-slate-950/40 border-t border-slate-800/60 rounded-b-2xl px-5">
-                        {{ $strangers->links(data: ['scrollTo' => false]) }}
-                    </div>
-                @endif
-            </div>
-        </div>
-    @endif
-</div>
-
